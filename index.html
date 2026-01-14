@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>University Voice Navigation Assistant</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #eef2f7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.chatbox {
+    width: 460px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: #2f80ed;
+    color: white;
+    padding: 14px;
+    text-align: center;
+    font-size: 18px;
+}
+
+.messages {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+}
+
+.msg {
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    max-width: 80%;
+    font-size: 14px;
+}
+
+.user {
+    background: #2f80ed;
+    color: white;
+    margin-left: auto;
+}
+
+.bot {
+    background: #e4e6eb;
+    color: black;
+    margin-right: auto;
+}
+
+video {
+    width: 100%;
+    display: none;
+    margin: 10px 0;
+    border-radius: 8px;
+}
+
+.controls {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    gap: 6px;
+}
+
+input {
+    flex: 1;
+    padding: 8px;
+}
+
+button {
+    padding: 8px 12px;
+    border: none;
+    background: #2f80ed;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+</style>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0b1020" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Campus Visit AI" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+</head>
+
+<body>
+
+<div class="chatbox">
+    <div class="header">AI-based Campus Visit</div>
+
+    <div class="messages" id="messages"></div>
+
+    <video id="videoPlayer" controls></video>
+
+    <div class="controls">
+        <input id="textInput" placeholder="Ask a question or say building / department..." />
+        <button onclick="sendText()">Send</button>
+        <button onclick="startListening()">🎤</button>
+    </div>
+</div>
+
+<script>
+const messages = document.getElementById("messages");
+const videoPlayer = document.getElementById("videoPlayer");
+
+/* ---------------- Speech Recognition ---------------- */
+let recognition;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        addMessage(text, "user");
+        processCommand(text);
+    };
+}
+
+/* ---------------- Text to Speech ---------------- */
+function speak(text) {
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+
+/* ---------------- UI Helpers ---------------- */
+function addMessage(text, sender) {
+    const div = document.createElement("div");
+    div.className = "msg " + sender;
+    div.innerText = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function sendText() {
+    const input = document.getElementById("textInput");
+    const text = input.value.trim();
+    if (!text) return;
+    addMessage(text, "user");
+    input.value = "";
+    processCommand(text);
+}
+
+/* ✅ NEW CODE — ENTER KEY SUPPORT */
+document.getElementById("textInput").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendText();
+    }
+});
+/* ✅ END */
+
+function startListening() {
+    addMessage("Listening...", "bot");
+    recognition.start();
+}
+
+/* ---------------- Video ---------------- */
+function playVideo(file) {
+    videoPlayer.src = file;
+    videoPlayer.style.display = "block";
+    videoPlayer.playbackRate = 2;
+    videoPlayer.play();
+}
+
+/* ---------------- Knowledge Base ---------------- */
+const knowledgeBase = [
+    { k:["cyber science"], a:"Cyber Science and Technology is in Satyajit Bhavan, Building 1. Rooms 109 Head of the Department and 110." },
+    { k:["english"], a:"English and Literary Studies is in Satyajit Bhavan, Building 1, Room 104." },
+    { k:["media", "journalism"], a:"Media Science and Journalism is in Satyajit Bhavan, Building 1, Room 409." },
+    { k:["multimedia"], a:"Multimedia department is in Satyajit Bhavan, Building 1, Room 301." },
+    { k:["psychology"], a:"Psychology department is in Satyajit Bhavan, Building 1, Room 101." },
+
+    { k:["pharmaceutical", "pharmacy"], a:"Pharmaceutical Technology is in Prafulla Bhavan, Building 3. Rooms 109 Head of the Department and 107." },
+
+    { k:["agriculture"], a:"Agriculture department is in Jagadish Bhavan, Building 4. Rooms 102 Head of the Department and 101." },
+    { k:["allied health"], a:"Allied Health Sciences is in Jagadish Bhavan, Building 4. Rooms 207 Head of the Department, 202, 301 and 302." },
+    { k:["biotechnology"], a:"Biotechnology department is in Jagadish Bhavan, Building 4, Room 106." },
+    { k:["chemistry"], a:"Chemistry department is in Jagadish Bhavan, Building 4, Room 224." },
+    { k:["civil"], a:"Civil Engineering is in Jagadish Bhavan, Building 4, Room 004." },
+    { k:["electrical"], a:"Electrical Engineering is in Jagadish Bhavan, Building 4, Room 120." },
+    { k:["electronics", "ece"], a:"Electronics and Communication Engineering is in Jagadish Bhavan, Building 4, Room 128." },
+    { k:["food", "nutrition"], a:"Food and Nutrition department is in Jagadish Bhavan, Building 4, Room 119." },
+    { k:["mathematics"], a:"Mathematics department is in Jagadish Bhavan, Building 4. Rooms 328 Head of the Department and 329." },
+    { k:["mechanical"], a:"Mechanical Engineering is in Jagadish Bhavan, Building 4, Room 004." },
+    { k:["physics"], a:"Physics department is in Jagadish Bhavan, Building 4, Room 225." },
+
+    { k:["computer science", "cse"], a:"Computer Science and Engineering is in Rabindra Bhavan, Building 5. Rooms 105 Head of the Department and 003." },
+    { k:["ai"], a:"CSE with Artificial Intelligence is in Rabindra Bhavan, Building 5. Rooms 103 Head of the Department and 104." },
+    { k:["data science", "ds"], a:"CSE with Data Science is in Rabindra Bhavan, Building 5, Room 203." },
+
+    { k:["commerce"], a:"Commerce department is in Rammohan Bhavan, Building 6. Rooms 613 Head of the Department and 616." },
+    { k:["computational"], a:"Computational Sciences is in Rammohan Bhavan, Building 6. Rooms 306 Head of the Department Dr. Jayanta Aich, 303 and 305." },
+    { k:["css"], a:"Computational Sciences is in Rammohan Bhavan, Building 6. Rooms 306 Head of the Department Dr. Jayanta Aich, 303 and 305." },
+    { k:["hospital"], a:"Hospital Management is in Rammohan Bhavan, Building 6, Room 701." },
+    { k:["law"], a:"Law department is in Rammohan Bhavan, Building 6. Rooms 105 Head of the Department and 106." },
+    { k:["management"], a:"Management department is in Rammohan Bhavan, Building 6. Rooms 505 Head of the Department and 503." },
+
+    { k:["nursing"], a:"Institute of Nursing is in Vivekananda Bhavan, Building 9. Rooms 008 Principal, 009 and 010." }
+];
+
+/* ---------------- Number Word Normalization ---------------- */
+const wordToNumber = {
+    one: "1",
+    two: "2",
+    three: "3",
+    four: "4",
+    five: "5",
+    six: "6",
+    seven: "7",
+    eight: "8",
+    nine: "9"
+};
+
+function normalizeInput(text) {
+    return text.toLowerCase().replace(
+        /\b(one|two|three|four|five|six|seven|eight|nine)\b/g,
+        match => wordToNumber[match]
+    );
+}
+
+
+/* ---------------- Main Logic ---------------- */
+function processCommand(text) {
+    //const input = text.toLowerCase();
+    const input = normalizeInput(text);
+    const bMatch = input.match(/\bbuilding\s*([1-9])\b|\b([1-9])\b/);
+    if (bMatch) {
+        const b = bMatch[1] || bMatch[2];
+        const reply = `Showing directions to Building ${b}.`;
+        playVideo(`${b}.mp4`);
+        addMessage(reply, "bot");
+        speak(reply);
+        return;
+    }
+
+    for (const item of knowledgeBase) {
+        if (item.k.some(key => input.includes(key))) {
+            addMessage(item.a, "bot");
+            speak(item.a);
+            return;
+        }
+    }
+
+    const fallback = "I can help with department locations, room numbers, and building navigation.";
+    addMessage(fallback, "bot");
+    speak(fallback);
+}
+</script>
+
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
+</body>
+</html>
